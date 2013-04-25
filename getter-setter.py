@@ -77,7 +77,7 @@ class DocBlock(object):
         description = []
 
         for line in lines:
-            line = line.strip(' */')
+            line = line.strip('\t */')
             if (line.startswith('@')):
                 nameMatches = re.findall('\@(\w+) (:?.*)[ ]?.*', line)
                 if len(nameMatches) > 0:
@@ -117,7 +117,7 @@ class Parser(object):
 
         return re.search(regExp, content) is not None
 
-    def _getDockBlockOfVariable(self, line):
+    def _getDocBlockOfVariable(self, line):
         content = self.getContent()
         matchPos = content.find(line)
 
@@ -167,7 +167,7 @@ class Parser(object):
         if len(nameMatches) >= 0:
             name = nameMatches[0]
 
-        dockBlockText = self._getDockBlockOfVariable(line)
+        dockBlockText = self._getDocBlockOfVariable(line)
         docblock = DocBlock()
         docblock.fromText(dockBlockText)
 
