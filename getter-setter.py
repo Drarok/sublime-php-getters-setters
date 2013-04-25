@@ -2,10 +2,11 @@ import sublime
 import sublime_plugin
 import re
 import os
-import json
+
 
 def msg(msg):
     print "[PHP Getters and Setters] %s" % msg
+
 
 class Prefs:
     """
@@ -19,26 +20,23 @@ class Prefs:
         Prefs.typeHintIgnore = settings.get('type_hint_ignore')
 
         templatePath = settings.get('templates')
-        if False == os.path.isabs(templatePath) :
+        if not os.path.isabs(templatePath):
             templatePath = os.path.join(sublime.packages_path(), "PHP Getters and Setters", templatePath)
-        Prefs.templates =  templatePath
+        Prefs.templates = templatePath
 
-        Prefs.style =  settings.get('style')
+        Prefs.style = settings.get('style')
 
-        msg ("ignored type hinting var types %s" % Prefs.typeHintIgnore)
-        msg ("code style is %s" % Prefs.style)
-        msg ("templates are in %s" % Prefs.templates)
-
-
+        msg("ignored type hinting var types %s" % Prefs.typeHintIgnore)
+        msg("code style is %s" % Prefs.style)
+        msg("templates are in %s" % Prefs.templates)
 
 
 Prefs.load()
 
+
 class Template(object):
-    def __init__(self, name, style = "camelCase"):
-
+    def __init__(self, name, style="camelCase"):
         msg("opening template %s" % os.path.join(Prefs.templates, style, name))
-
         self.content = open(os.path.join(Prefs.templates, style, name)).read()
 
     def replace(self, args):
@@ -53,7 +51,7 @@ class DocBlock(object):
         self.tags = {}
         self.description = ''
 
-    def hasTag(self, name) :
+    def hasTag(self, name):
         return name in self.tags
 
     def hasDescription(self):
@@ -80,16 +78,16 @@ class DocBlock(object):
 
         for line in lines:
             line = line.strip(' */')
-            if (line.startswith('@')) :
+            if (line.startswith('@')):
                 nameMatches = re.findall('\@(\w+) (:?.*)[ ]?.*', line)
-                if len(nameMatches) > 0 :
+                if len(nameMatches) > 0:
                     name = nameMatches[0][0]
                     value = nameMatches[0][1]
 
                     self.addTag(name.strip('@'), value)
                 # [name, value, other] = line.split(" ", 2)
                 else:
-                    msg("Error: could not parse line %s" %line)
+                    msg("Error: could not parse line %s" % line)
 
             else:
                 if len(line) > 0:
@@ -97,12 +95,13 @@ class DocBlock(object):
 
         self.setDescription("\n".join(description).rstrip("\n"))
 
+
 class Parser(object):
     """
         parses text to get class variables so that make the magic can happen
     """
     def __init__(self, content):
-        self.content        = content
+        self.content = content
         self.functionRegExp = ".*function.*%s"
         self.variableRegExp = '((?:private|public|protected)[ ]{0,}(?:final|static)?[ ]{0,}(?:\$.*?)[ |=|;].*)\n'
 
@@ -122,39 +121,36 @@ class Parser(object):
         content = self.getContent()
         matchPos = content.find(line)
 
-
-
         lineByLine = content[:matchPos].split("\n")
         lineByLine.reverse()
         commentStart = 0
         commentEnd = 0
 
-        for n in range(len(lineByLine)) :
+        for n in range(len(lineByLine)):
             line = lineByLine[n].strip()
-            if "\n" == line :
+            if "\n" == line:
                 continue
 
-            elif "\r\n" == line :
+            elif "\r\n" == line:
                 continue
 
-            elif "" == line :
+            elif "" == line:
                 continue
 
-            elif '*/' == line :
-                commentStart = n +1
+            elif '*/' == line:
+                commentStart = n + 1
 
-            elif '/**' == line :
+            elif '/**' == line:
                 commentEnd = n
                 break
 
             elif 0 == commentStart:
                 break
 
-
-        if commentStart == commentEnd :
+        if commentStart == commentEnd:
             return ""
 
-        if (commentStart == 0) or (commentEnd == 0) :
+        if (commentStart == 0) or (commentEnd == 0):
             return ""
 
         result = lineByLine[commentStart:commentEnd]
@@ -168,7 +164,7 @@ class Parser(object):
         """
         nameMatches = re.findall('\$(.*?)[ |=|;]', line)
         name = "Unknown"
-        if len(nameMatches) >= 0 :
+        if len(nameMatches) >= 0:
             name = nameMatches[0]
 
         dockBlockText = self._getDockBlockOfVariable(line)
@@ -177,29 +173,30 @@ class Parser(object):
 
         typeName = 'mixed'
         if docblock.hasTag('var'):
-            typeName    =  docblock.getTag('var')
+            typeName = docblock.getTag('var')
         description = docblock.getDescription()
 
-        return Variable(name = name, typeName = typeName, description = description)
+        return Variable(name=name, typeName=typeName, description=description)
 
     def getClassVariables(self):
         """
             returns a list of Variable objects, created from the parsed code
         """
-        content       = self.getContent()
+        content = self.getContent()
         variablesList = []
 
         matches = re.findall(self.variableRegExp, content,  re.IGNORECASE)
-        for match in matches :
+        for match in matches:
             variable = self._processVariable(match)
             variablesList.append(variable)
 
         return variablesList
 
+
 class Variable(object):
-    def __init__(self, name, typeName = None, description=None):
-        self.name        = name
-        self.type        = typeName
+    def __init__(self, name, typeName=None, description=None):
+        self.name = name
+        self.type = typeName
         self.description = description
 
     def getName(self):
@@ -207,7 +204,7 @@ class Variable(object):
 
     def getDescription(self):
         if self.description is None or "" == self.description:
-            self.description = 'value of %s' %self.getName() #get description from name
+            self.description = 'value of %s' % self.getName()  # get description from name
         return self.description
 
     def getPartialFunctionName(self):
@@ -215,23 +212,23 @@ class Variable(object):
         # print style
         name = self.getName()
 
-        if 'camelCase' == style :
+        if 'camelCase' == style:
             var = name[0].upper() + name[1:]
-        else :
+        else:
             var = name
 
         return var
 
     def getGetterFunctionName(self):
         style = Prefs.style
-        if 'camelCase' == style :
+        if 'camelCase' == style:
             return "get%s" % self.getPartialFunctionName()
 
         return "get_%s" % self.getPartialFunctionName()
 
     def getSetterFunctionName(self):
         style = Prefs.style
-        if 'camelCase' == style :
+        if 'camelCase' == style:
             return "set%s" % self.getPartialFunctionName()
 
         return "set_%s" % self.getPartialFunctionName()
@@ -240,7 +237,7 @@ class Variable(object):
         return self.type
 
     def GetTypeHint(self):
-        if self.type in Prefs.typeHintIgnore :
+        if self.type in Prefs.typeHintIgnore:
             return ''
 
         if self.type.find(" ") > -1 or self.type.find("|") > -1:
@@ -248,7 +245,6 @@ class Variable(object):
             return ""
 
         return self.type
-
 
 
 class Base(sublime_plugin.TextCommand):
@@ -260,17 +256,17 @@ class Base(sublime_plugin.TextCommand):
     def getContent(self):
         return self.view.substr(sublime.Region(0, self.view.size()))
 
-    def getParser(self, content = ''):
+    def getParser(self, content=''):
         self.parser = Parser(content)
 
-        return  self.parser
+        return self.parser
 
     def findLastBracket(self):
-        view =self.view
+        view = self.view
         pos = long(0)
         lastPos = 0
         while pos is not None:
-            pos = view.find('\}', pos);
+            pos = view.find('\}', pos)
 
             if pos is not None:
                 lastPos = pos
@@ -288,11 +284,11 @@ class Base(sublime_plugin.TextCommand):
 
     def generateFunctionCode(self, template, variable):
         substitutions = {
-            "name"           : variable.getName(),
-            "type"           : variable.getType(),
-            "normalizedName" : variable.getPartialFunctionName(),
-            "description"    : variable.getDescription(),
-            "typeHint"       : variable.GetTypeHint()
+            "name": variable.getName(),
+            "type": variable.getType(),
+            "normalizedName": variable.getPartialFunctionName(),
+            "description": variable.getDescription(),
+            "typeHint": variable.GetTypeHint()
         }
 
         return template.replace(substitutions)
@@ -334,9 +330,9 @@ class Base(sublime_plugin.TextCommand):
     def is_visible(self):
         return self.is_enabled()
 
+
 class PhpGenerateFor(Base):
     what = 'getter'
-
 
     def run(self, edit):
         self.edit = edit
@@ -346,7 +342,7 @@ class PhpGenerateFor(Base):
         self.vars = []
 
         for variable in parser.getClassVariables():
-            item =[ variable.getName(), variable.getDescription( )]
+            item = [variable.getName(), variable.getDescription()]
             self.vars.append(item)
 
         self.view.window().show_quick_panel(self.vars, self.write)
@@ -356,14 +352,16 @@ class PhpGenerateFor(Base):
         parser = self.getParser(self.getContent())
         for variable in parser.getClassVariables():
             if name == variable.getName():
-                if 'getter' == self.what :
+                if 'getter' == self.what:
                     code = self.generateGetterFunction(parser, variable)
                 else:
                     code = self.generateSetterFunction(parser, variable)
                 self.writeAtEnd(self.edit, code)
 
+
 class PhpGenerateGetterForCommand(PhpGenerateFor):
     what = 'getter'
+
 
 class PhpGenerateSetterForCommand(PhpGenerateFor):
     what = 'setter'
@@ -378,6 +376,7 @@ class PhpGenerateGettersCommand(Base):
 
         self.writeAtEnd(edit, code)
 
+
 class PhpGenerateSettersCommand(Base):
     def run(self, edit):
         parser = self.getParser(self.getContent())
@@ -386,6 +385,7 @@ class PhpGenerateSettersCommand(Base):
             code += self.generateSetterFunction(parser, variable)
 
         self.writeAtEnd(edit, code)
+
 
 class PhpGenerateGettersSettersCommand(Base):
     def run(self, edit):
